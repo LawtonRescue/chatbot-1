@@ -1,12 +1,13 @@
 import streamlit as st
 from openai import OpenAI
 
+MAX_CHARS_PER_FILE = 20_000
+
 
 def build_uploaded_file_context(uploaded_files):
     if not uploaded_files:
         return ""
 
-    max_chars_per_file = 20_000
     sections = []
     for uploaded_file in uploaded_files:
         content = uploaded_file.getvalue()
@@ -16,8 +17,8 @@ def build_uploaded_file_context(uploaded_files):
             text = content.decode("utf-8", errors="replace")
         text = text.strip()
         if text:
-            if len(text) > max_chars_per_file:
-                text = f"{text[:max_chars_per_file]}\n...[truncated]"
+            if len(text) > MAX_CHARS_PER_FILE:
+                text = f"{text[:MAX_CHARS_PER_FILE]}\n...[truncated]"
             sections.append(f"File: {uploaded_file.name}\n{text}")
 
     return "\n\n".join(sections)
@@ -71,8 +72,7 @@ else:
             messages.append(
                 {
                     "role": "system",
-                    "content": "Use the uploaded LinkedIn file contents as context for your answer.\n\n"
-                    f"{linkedin_context}",
+                    "content": f"Use the uploaded LinkedIn file contents as context for your answer.\n\n{linkedin_context}",
                 }
             )
         messages.extend(
