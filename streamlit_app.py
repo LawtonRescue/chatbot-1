@@ -2,6 +2,7 @@ import streamlit as st
 from openai import OpenAI
 
 MAX_CHARS_PER_FILE = 20_000
+TRUNCATION_SUFFIX = "\n...[truncated]"
 
 
 def build_uploaded_file_context(uploaded_files):
@@ -18,7 +19,7 @@ def build_uploaded_file_context(uploaded_files):
         text = text.strip()
         if text:
             if len(text) > MAX_CHARS_PER_FILE:
-                text = f"{text[:MAX_CHARS_PER_FILE]}\n...[truncated]"
+                text = f"{text[: MAX_CHARS_PER_FILE - len(TRUNCATION_SUFFIX)]}{TRUNCATION_SUFFIX}"
             sections.append(f"File: {uploaded_file.name}\n{text}")
 
     return "\n\n".join(sections)
