@@ -1,6 +1,28 @@
 import streamlit as st
 from openai import OpenAI
 
+
+def build_uploaded_file_context(uploaded_files):
+    if not uploaded_files:
+        return ""
+
+    max_chars_per_file = 20_000
+    sections = []
+    for uploaded_file in uploaded_files:
+        content = uploaded_file.getvalue()
+        try:
+            text = content.decode("utf-8")
+        except UnicodeDecodeError:
+            text = content.decode("utf-8", errors="replace")
+        text = text.strip()
+        if text:
+            if len(text) > max_chars_per_file:
+                text = f"{text[:max_chars_per_file]}\n...[truncated]"
+            sections.append(f"File: {uploaded_file.name}\n{text}")
+
+    return "\n\n".join(sections)
+
+
 # Show title and description.
 st.title("💬 Chatbot")
 st.write(
@@ -19,6 +41,10 @@ else:
 
     # Create an OpenAI client.
     client = OpenAI(api_key=openai_api_key)
+    linkedin_files = st.file_uploader(
+        "LinkedIn files (optional)", type=["txt", "csv", "json", "md"], accept_multiple_files=True
+    )
+    linkedin_context = build_uploaded_file_context(linkedin_files)
 
     # Create a session state variable to store the chat messages. This ensures that the
     # messages persist across reruns.
@@ -40,12 +66,22 @@ else:
             st.markdown(prompt)
 
         # Generate a response using the OpenAI API.
+        messages = []
+        if linkedin_context:
+            messages.append(
+                {
+                    "role": "system",
+                    "content": "Use the uploaded LinkedIn file contents as context for your answer.\n\n"
+                    f"{linkedin_context}",
+                }
+            )
+        messages.extend(
+            {"role": m["role"], "content": m["content"]}
+            for m in st.session_state.messages
+        )
         stream = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
+            messages=messages,
             stream=True,
         )
 
