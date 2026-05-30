@@ -42,10 +42,10 @@ else:
 
     # Create an OpenAI client.
     client = OpenAI(api_key=openai_api_key)
-    linkedin_files = st.file_uploader(
-        "LinkedIn files (optional)", type=["txt", "csv", "json", "md"], accept_multiple_files=True
+    uploaded_files = st.file_uploader(
+        "Files (optional)", type=["txt", "csv", "json", "md"], accept_multiple_files=True
     )
-    linkedin_context = build_uploaded_file_context(linkedin_files)
+    file_context = build_uploaded_file_context(uploaded_files)
 
     # Create a session state variable to store the chat messages. This ensures that the
     # messages persist across reruns.
@@ -68,11 +68,11 @@ else:
 
         # Generate a response using the OpenAI API.
         messages = []
-        if linkedin_context:
+        if file_context:
             messages.append(
                 {
                     "role": "system",
-                    "content": f"Use the uploaded LinkedIn file contents as context for your answer.\n\n{linkedin_context}",
+                    "content": f"Use the uploaded file contents as context for your answer.\n\n{file_context}",
                 }
             )
         messages.extend(
