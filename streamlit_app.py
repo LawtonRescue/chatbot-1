@@ -1,6 +1,30 @@
 import streamlit as st
 from openai import OpenAI
 
+MAX_CHARS_PER_FILE = 20_000
+TRUNCATION_SUFFIX = "\n...[truncated]"
+
+
+def build_uploaded_file_context(uploaded_files):
+    if not uploaded_files:
+        return ""
+
+    sections = []
+    for uploaded_file in uploaded_files:
+        content = uploaded_file.getvalue()
+        try:
+            text = content.decode("utf-8")
+        except UnicodeDecodeError:
+            text = content.decode("utf-8", errors="replace")
+        text = text.strip()
+        if text:
+            if len(text) > MAX_CHARS_PER_FILE:
+                text = f"{text[: MAX_CHARS_PER_FILE - len(TRUNCATION_SUFFIX)]}{TRUNCATION_SUFFIX}"
+            sections.append(f"File: {uploaded_file.name}\n{text}")
+
+    return "\n\n".join(sections)
+
+
 # Show title and description.
 st.title("💬 Chatbot")
 st.write(
@@ -13,6 +37,10 @@ st.write(
 # Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
 # via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
 openai_api_key = st.text_input("OpenAI API Key", type="password")
+uploaded_files = st.file_uploader(
+    "Files (optional)", type=["txt", "csv", "json", "md"], accept_multiple_files=True
+)
+file_context = build_uploaded_file_context(uploaded_files)
 if not openai_api_key:
     st.info("Please add your OpenAI API key to continue.", icon="🗝️")
 else:
@@ -40,12 +68,21 @@ else:
             st.markdown(prompt)
 
         # Generate a response using the OpenAI API.
+        messages = []
+        if file_context:
+            messages.append(
+                {
+                    "role": "system",
+                    "content": f"Use the uploaded file contents as context for your answer.\n\n{file_context}",
+                }
+            )
+        messages.extend(
+            {"role": m["role"], "content": m["content"]}
+            for m in st.session_state.messages
+        )
         stream = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
+            messages=messages,
             stream=True,
         )
 
